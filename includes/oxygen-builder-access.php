@@ -39,7 +39,7 @@ add_action(
 			return;
 		}
 
-		if ( ! class_exists( '\Breakdance\Permissions' ) ) {
+		if ( ! function_exists( '\Breakdance\Permissions\setRolesPermissions' ) ) {
 			return;
 		}
 

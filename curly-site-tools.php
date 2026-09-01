@@ -3,7 +3,7 @@
  * Plugin Name:       Curly Site Tools
  * Plugin URI:        https://github.com/Curly-Sprout-Creative/curly-site-tools
  * Description:       A set of small site-level hardening and behavior toggles for Curly Sprout sites. Admin can enable or disable each change under Tools > Curly Site Tools.
- * Version:           1.1.0
+ * Version:           1.1.1
  * Author:            Curly Sprout Creative
  * License:           GPL-2.0-or-later
  * Text Domain:       curly-site-tools
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CURLY_SITE_TOOLS_VERSION', '1.1.0' );
+define( 'CURLY_SITE_TOOLS_VERSION', '1.1.1' );
 define( 'CURLY_SITE_TOOLS_FILE', __FILE__ );
 define( 'CURLY_SITE_TOOLS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CURLY_SITE_TOOLS_URL', plugin_dir_url( __FILE__ ) );
