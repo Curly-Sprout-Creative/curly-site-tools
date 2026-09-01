@@ -1,0 +1,29 @@
+name: Build and Release Plugin
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build plugin zip
+        run: |
+          mkdir -p dist/curly-site-tools
+          cp -r curly-site-tools.php uninstall.php assets includes vendor dist/curly-site-tools/
+          rm -rf dist/curly-site-tools/vendor/plugin-update-checker/.git
+          cd dist && zip -r curly-site-tools.zip curly-site-tools
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/curly-site-tools.zip
+          generate_release_notes: true
