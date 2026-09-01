@@ -29,8 +29,17 @@ curly_site_tools_register_toggle(
 /**
  * Apply the Site Admin builder permission when the toggle is enabled.
  *
- * Runs on `breakdance_loaded` so the Breakdance\Permissions API exists, but
- * degrades gracefully on sites without Oxygen (no action, no error).
+ * Runs on `breakdance_loaded` (i.e. during `plugins_loaded`). We write the
+ * `oxygen_settings_permissions` option DIRECTLY via WordPress rather than
+ * calling `\Breakdance\Permissions\getRolesPermissions()`: that function's
+ * internal `_getRoles()` instantiates `new WP_Roles()` inside the
+ * `Breakdance\Permissions` namespace, which PHP resolves to the non-existent
+ * `\Breakdance\Permissions\WP_Roles` and fatals whenever `$wp_roles` isn't yet
+ * initialized (front-end requests and wp-cli). Oxygen stores this option as
+ * plain JSON via `set_global_option()`, so writing it with `update_option()`
+ * is byte-for-byte equivalent and safe in every context.
+ *
+ * Degrades gracefully on sites without Oxygen (no action, no error).
  */
 add_action(
 	'breakdance_loaded',
@@ -39,21 +48,22 @@ add_action(
 			return;
 		}
 
-		if ( ! function_exists( '\Breakdance\Permissions\setRolesPermissions' ) ) {
+		if ( ! defined( '__BREAKDANCE_VERSION' ) ) {
 			return;
 		}
 
-		$roles = \Breakdance\Permissions\getRolesPermissions();
-
-		// Keep administrators on full access.
-		$roles['administrator'] = 'full';
-
-		// Grant the Site Admin role edit-content builder access.
-		if ( array_key_exists( 'site_admin', $roles ) ) {
-			$roles['site_admin'] = 'edit';
+		$raw   = get_option( 'oxygen_settings_permissions', '' );
+		$roles = is_string( $raw ) ? json_decode( $raw, true ) : null;
+		if ( ! is_array( $roles ) ) {
+			$roles = array();
 		}
 
-		\Breakdance\Permissions\setRolesPermissions( $roles );
+		// Keep administrators on full access and grant the Site Admin role
+		// edit-content builder access.
+		$roles['administrator'] = 'full';
+		$roles['site_admin']    = 'edit';
+
+		update_option( 'oxygen_settings_permissions', wp_json_encode( $roles ), false );
 	},
 	20
 );
