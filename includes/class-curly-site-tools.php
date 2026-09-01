@@ -102,6 +102,7 @@ final class Curly_Site_Tools {
 			'disable-gutenberg.php',
 			'disable-update-emails.php',
 			'media-handling.php',
+			'oxygen-builder-access.php',
 			'post-utilities.php',
 		);
 
