@@ -415,9 +415,10 @@ final class Curly_Site_Tools {
  * @param string $label       Label.
  * @param string $description Description.
  * @param bool   $default     Default enabled state.
+ * @param array  $args        Optional. Extra settings (e.g. a companion numeric 'field').
  */
-function curly_site_tools_register_toggle( $id, $label, $description, $default = false ) {
-	Curly_Site_Tools::instance()->register_toggle( $id, $label, $description, $default );
+function curly_site_tools_register_toggle( $id, $label, $description, $default = false, $args = array() ) {
+	Curly_Site_Tools::instance()->register_toggle( $id, $label, $description, $default, $args );
 }
 
 /**
