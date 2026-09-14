@@ -20,9 +20,19 @@ curly_site_tools_register_toggle(
 
 curly_site_tools_register_toggle(
 	'limit_uploads_1mb',
-	__( 'Limit Editor uploads to 1 MB', 'curly-site-tools' ),
-	__( 'Cap file uploads for non-admin (Editor) users at 1 MB and show a note in the media uploader.', 'curly-site-tools' ),
-	true
+	__( 'Limit Editor uploads', 'curly-site-tools' ),
+	__( 'Cap file uploads for non-admin (Editor) users and show a note in the media uploader.', 'curly-site-tools' ),
+	true,
+	array(
+		'field' => array(
+			'label'   => __( 'Maximum size', 'curly-site-tools' ),
+			'option'  => 'curly_site_tools_upload_limit_mb',
+			'min'     => 1,
+			'step'    => 1,
+			'unit'    => 'MB',
+			'default' => 1,
+		),
+	)
 );
 
 add_action(
@@ -50,14 +60,23 @@ add_action(
 		}
 
 		if ( curly_site_tools_is_enabled( 'limit_uploads_1mb' ) ) {
-			// Limit upload size for Editor role to 1 MB.
+			// Configurable limit for the Editor role, in whole megabytes.
+			$limit_mb = (int) curly_site_tools_get_value( 'limit_uploads_1mb', 1 );
+			if ( $limit_mb < 1 ) {
+				$limit_mb = 1;
+			}
+
 			add_filter(
 				'wp_handle_upload_prefilter',
-				function ( $file ) {
+				function ( $file ) use ( $limit_mb ) {
 					if ( current_user_can( 'edit_posts' ) && ! current_user_can( 'manage_options' ) ) {
-						$max_size = 1024 * 1024; // 1 MB in bytes.
+						$max_size = $limit_mb * 1024 * 1024;
 						if ( $file['size'] > $max_size ) {
-							$file['error'] = 'File size exceeds the 1MB limit. Please upload to Google Drive or similar and link instead';
+							$file['error'] = sprintf(
+								/* translators: %d: maximum upload size in megabytes. */
+								__( 'File size exceeds the %dMB limit. Please upload to Google Drive or similar and link instead', 'curly-site-tools' ),
+								$limit_mb
+							);
 						}
 					}
 					return $file;
@@ -67,9 +86,18 @@ add_action(
 			// Show the limit in the media uploader for Editors.
 			add_action(
 				'post-upload-ui',
-				function () {
+				function () use ( $limit_mb ) {
 					if ( current_user_can( 'edit_posts' ) && ! current_user_can( 'manage_options' ) ) {
-						echo '<p><strong>Upload limit for your role: 1MB</strong></p>';
+						printf(
+							'<p><strong>%s</strong></p>',
+							esc_html(
+								sprintf(
+									/* translators: %d: maximum upload size in megabytes. */
+									__( 'Upload limit for your role: %dMB', 'curly-site-tools' ),
+									$limit_mb
+								)
+							)
+						);
 					}
 				}
 			);

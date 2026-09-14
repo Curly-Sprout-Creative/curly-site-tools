@@ -20,7 +20,7 @@ updates can be distributed via GitHub Releases (see "Updates" below).
 | iOS background-attachment fix | 16 | On iOS, swaps `.fixed-bg` → `.scroll-bg` (parallax fix). |
 | Count posts in the past 3 months | 20 | `get_3month_post_count()` — posts in the last 3 months OR sticky posts. **Result is cached in a transient for 6 hours** so the `posts_per_page=-1` query doesn't run on every page load. |
 | Open offsite links in a new tab | 23 | Front-end JS: opens links to other domains in a new tab with `rel="noopener noreferrer"`. |
-| Limit Editor uploads to 1 MB | 28 | Caps non-admin uploads at 1 MB and shows a note in the media uploader. |
+| Limit Editor uploads | 28 | Caps non-admin uploads at a configurable size (default 1 MB, adjustable in 1 MB increments) and shows a note in the media uploader. |
 | Site Admin Oxygen Builder access | — | Grants the "Site Admin" role "Edit Content Interface Only" access in the Oxygen Builder (edit page text/links/images, rearrange/duplicate elements; templates & global settings stay locked to admins). Writes the `oxygen_settings_permissions` option directly (v1.1.2+); revisit when O6 ships its official client-control feature. |
 
 ### Not a toggle
@@ -50,9 +50,14 @@ curly-site-tools/
 ## How toggles work
 
 Each include registers itself into a central registry at load time via
-`curly_site_tools_register_toggle( $id, $label, $description, $default )` and
-gates its hooks behind `curly_site_tools_is_enabled( $id )`. Enabled state is a
-single autoloaded option (`curly_site_tools_enabled`) so it's one DB read.
+`curly_site_tools_register_toggle( $id, $label, $description, $default, $args )`
+and gates its hooks behind `curly_site_tools_is_enabled( $id )`. Enabled state is
+a single autoloaded option (`curly_site_tools_enabled`) so it's one DB read.
+
+A toggle may pass an optional `$args['field']` to attach a companion numeric
+input (used by the upload limit). The number is stored in its own autoloaded
+option (`curly_site_tools_upload_limit_mb`, default `1`, whole MB, minimum `1`)
+and read with `curly_site_tools_get_value( $id, $default )`.
 
 ## Installation
 

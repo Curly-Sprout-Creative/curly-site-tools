@@ -128,17 +128,56 @@ final class Curly_Site_Tools {
 	 * @param string $label       Short checkbox label.
 	 * @param string $description Longer description shown under the label.
 	 * @param bool   $default     Default enabled state.
+	 * @param array  $args        Optional. Extra settings for the toggle. Supports
+	 *                            a 'field' array describing a companion numeric
+	 *                            input (label, option, min, step, unit, default).
 	 */
-	public function register_toggle( $id, $label, $description, $default = false ) {
+	public function register_toggle( $id, $label, $description, $default = false, $args = array() ) {
 		if ( $this->locked || isset( $this->toggles[ $id ] ) ) {
 			return;
 		}
+
+		$field = array();
+		if ( isset( $args['field'] ) && is_array( $args['field'] ) ) {
+			$field = wp_parse_args(
+				$args['field'],
+				array(
+					'label'   => '',
+					'option'  => '',
+					'min'     => 1,
+					'step'    => 1,
+					'unit'    => '',
+					'default' => 1,
+				)
+			);
+			$field['option'] = sanitize_key( $field['option'] );
+		}
+
 		$this->toggles[ $id ] = array(
 			'id'          => sanitize_key( $id ),
 			'label'       => $label,
 			'description' => $description,
 			'default'     => (bool) $default,
+			'field'       => $field,
 		);
+	}
+
+	/**
+	 * Get a toggle's stored value. For a toggle with a companion numeric field
+	 * this returns the field's option value; otherwise it returns the boolean
+	 * enabled state.
+	 *
+	 * @param string     $id      Toggle id.
+	 * @param mixed|null $default Value to return when the option is unset.
+	 * @return mixed
+	 */
+	public function get_value( $id, $default = null ) {
+		if ( isset( $this->toggles[ $id ]['field']['option'] ) && '' !== $this->toggles[ $id ]['field']['option'] ) {
+			$field    = $this->toggles[ $id ]['field'];
+			$fallback = null !== $default ? $default : $field['default'];
+			return get_option( $field['option'], $fallback );
+		}
+		return $this->is_enabled( $id );
 	}
 
 	/**
@@ -230,6 +269,32 @@ final class Curly_Site_Tools {
 				'default'           => array(),
 			)
 		);
+
+		// Register the companion option for each numeric toggle field.
+		foreach ( $this->toggles as $toggle ) {
+			if ( empty( $toggle['field']['option'] ) ) {
+				continue;
+			}
+			register_setting(
+				self::OPTION_GROUP,
+				$toggle['field']['option'],
+				array(
+					'type'              => 'integer',
+					'sanitize_callback' => array( $this, 'sanitize_number_field' ),
+					'default'           => $toggle['field']['default'],
+				)
+			);
+		}
+	}
+
+	/**
+	 * Sanitize a numeric toggle field: whole numbers, minimum of 1.
+	 *
+	 * @param mixed $value Raw input.
+	 * @return int
+	 */
+	public function sanitize_number_field( $value ) {
+		return max( 1, absint( $value ) );
 	}
 
 	/**
@@ -270,7 +335,10 @@ final class Curly_Site_Tools {
 				<table class="form-table" role="presentation">
 					<tbody>
 					<?php foreach ( $this->toggles as $id => $toggle ) : ?>
-						<?php $enabled = $this->is_enabled( $id ); ?>
+						<?php
+						$enabled = $this->is_enabled( $id );
+						$field   = isset( $toggle['field'] ) ? $toggle['field'] : array();
+						?>
 						<tr>
 							<th scope="row">
 								<label for="curly-site-tools-<?php echo esc_attr( $id ); ?>">
@@ -290,6 +358,28 @@ final class Curly_Site_Tools {
 										<?php echo esc_html( $toggle['description'] ); ?>
 									</span>
 								</label>
+								<?php if ( ! empty( $field['option'] ) ) : ?>
+									<p class="curly-site-tools-number">
+										<?php if ( '' !== $field['label'] ) : ?>
+											<label for="curly-site-tools-<?php echo esc_attr( $field['option'] ); ?>">
+												<?php echo esc_html( $field['label'] ); ?>
+											</label>
+										<?php endif; ?>
+										<input
+											type="number"
+											id="curly-site-tools-<?php echo esc_attr( $field['option'] ); ?>"
+											class="small-text"
+											name="<?php echo esc_attr( $field['option'] ); ?>"
+											value="<?php echo esc_attr( $this->get_value( $id ) ); ?>"
+											min="<?php echo esc_attr( $field['min'] ); ?>"
+											step="<?php echo esc_attr( $field['step'] ); ?>"
+											data-curly-site-tools-toggle="curly-site-tools-<?php echo esc_attr( $id ); ?>"
+										/>
+										<?php if ( '' !== $field['unit'] ) : ?>
+											<span class="description"><?php echo esc_html( $field['unit'] ); ?></span>
+										<?php endif; ?>
+									</p>
+								<?php endif; ?>
 							</td>
 						</tr>
 					<?php endforeach; ?>
@@ -297,6 +387,22 @@ final class Curly_Site_Tools {
 				</table>
 				<?php submit_button( __( 'Save Changes', 'curly-site-tools' ) ); ?>
 			</form>
+			<script>
+			( function () {
+				var fields = document.querySelectorAll( '[data-curly-site-tools-toggle]' );
+				Array.prototype.forEach.call( fields, function ( field ) {
+					var toggle = document.getElementById( field.getAttribute( 'data-curly-site-tools-toggle' ) );
+					if ( ! toggle ) {
+						return;
+					}
+					var sync = function () {
+						field.disabled = ! toggle.checked;
+					};
+					toggle.addEventListener( 'change', sync );
+					sync();
+				} );
+			}() );
+			</script>
 		</div>
 		<?php
 	}
@@ -322,4 +428,15 @@ function curly_site_tools_register_toggle( $id, $label, $description, $default =
  */
 function curly_site_tools_is_enabled( $id ) {
 	return Curly_Site_Tools::instance()->is_enabled( $id );
+}
+
+/**
+ * Get a toggle's stored value (procedural helper for includes).
+ *
+ * @param string     $id      Toggle id.
+ * @param mixed|null $default Value to return when the option is unset.
+ * @return mixed
+ */
+function curly_site_tools_get_value( $id, $default = null ) {
+	return Curly_Site_Tools::instance()->get_value( $id, $default );
 }
