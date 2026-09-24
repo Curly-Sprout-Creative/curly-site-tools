@@ -19,7 +19,7 @@ updates can be distributed via GitHub Releases (see "Updates" below).
 | Completely disable comments | 9 | Removes comments/trackbacks everywhere (admin, menus, post-type support, front end). |
 | iOS background-attachment fix | 16 | On iOS, swaps `.fixed-bg` → `.scroll-bg` (parallax fix). |
 | Count posts in the past 3 months | 20 | `get_3month_post_count()` — posts in the last 3 months OR sticky posts. **Result is cached in a transient for 6 hours** so the `posts_per_page=-1` query doesn't run on every page load. |
-| Open offsite links in a new tab | 23 | Front-end JS: opens links to other domains in a new tab with `rel="noopener noreferrer"`. |
+| Open offsite links in a new tab | 23 | Front-end JS: opens links to other domains in a new tab with `rel="noopener noreferrer"`. Overrides an explicit `target="_self"` (as Oxygen/Breakdance render it) and watches for links added after load. |
 | Limit Editor uploads | 28 | Caps non-admin uploads at a configurable size (default 1 MB, adjustable in 1 MB increments) and shows a note in the media uploader. |
 | Site Admin Oxygen Builder access | — | Grants the "Site Admin" role "Edit Content Interface Only" access in the Oxygen Builder (edit page text/links/images, rearrange/duplicate elements; templates & global settings stay locked to admins). Writes the `oxygen_settings_permissions` option directly (v1.1.2+); revisit when O6 ships its official client-control feature. |
 
