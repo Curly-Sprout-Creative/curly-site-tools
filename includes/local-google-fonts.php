@@ -91,8 +91,22 @@ function curly_site_tools_capture_google_fonts_url() {
 	// The first get_option() above may have cached an empty value in this
 	// request; drop it so the loopback request's stored URL is read.
 	wp_cache_delete( CURLY_SITE_TOOLS_GF_REMOTE, 'options' );
+	$stored = (string) get_option( CURLY_SITE_TOOLS_GF_REMOTE, '' );
+	if ( '' !== $stored ) {
+		return $stored;
+	}
 
-	return (string) get_option( CURLY_SITE_TOOLS_GF_REMOTE, '' );
+	// The loopback may have been answered from a page cache, in which case our
+	// filter never ran. The cached HTML still contains the Google Fonts <link>,
+	// so read the URL straight out of it.
+	$body = wp_remote_retrieve_body( $response );
+	if ( preg_match( '#https://fonts\.googleapis\.com/css2[^"\'<>\s]+#', $body, $matches ) ) {
+		$url = html_entity_decode( $matches[0], ENT_QUOTES );
+		update_option( CURLY_SITE_TOOLS_GF_REMOTE, $url, false );
+		return $url;
+	}
+
+	return '';
 }
 
 /**
