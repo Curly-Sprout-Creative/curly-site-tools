@@ -100,7 +100,7 @@ function curly_site_tools_capture_google_fonts_url() {
 	// filter never ran. The cached HTML still contains the Google Fonts <link>,
 	// so read the URL straight out of it.
 	$body = wp_remote_retrieve_body( $response );
-	if ( preg_match( '#https://fonts\.googleapis\.com/css2[^"\'<>\s]+#', $body, $matches ) ) {
+	if ( preg_match( '#https://fonts\.googleapis\.com/css2[^"\'<>]+#', $body, $matches ) ) {
 		$url = html_entity_decode( $matches[0], ENT_QUOTES );
 		update_option( CURLY_SITE_TOOLS_GF_REMOTE, $url, false );
 		return $url;
