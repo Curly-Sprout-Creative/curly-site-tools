@@ -88,6 +88,10 @@ function curly_site_tools_capture_google_fonts_url() {
 		return '';
 	}
 
+	// The first get_option() above may have cached an empty value in this
+	// request; drop it so the loopback request's stored URL is read.
+	wp_cache_delete( CURLY_SITE_TOOLS_GF_REMOTE, 'options' );
+
 	return (string) get_option( CURLY_SITE_TOOLS_GF_REMOTE, '' );
 }
 
