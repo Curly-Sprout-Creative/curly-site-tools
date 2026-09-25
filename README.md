@@ -79,6 +79,26 @@ wp option patch update curly_site_tools_enabled local_google_fonts 1
 wp eval 'curly_site_tools_localize_google_fonts();'
 ```
 
+### How the build finds the Google Fonts stylesheet URL
+
+The build needs the site's real `fonts.googleapis.com/css2?...` URL (it encodes
+the exact family/weight set the theme requests). It is discovered in three ways,
+in order:
+
+1. **Already stored** — any front-end request with the toggle on stores the URL
+   via the `breakdance_google_fonts_url` filter, and the build reads it.
+2. **Loopback probe** — if nothing is stored, the build requests the site's home
+   page once (with a `curly_fonts_probe` query string) and picks up the URL the
+   filter stores during that request.
+3. **HTML parse fallback** — if that loopback is answered from a full-page cache
+   (LiteSpeed/Cloudflare) and the filter therefore never runs, the URL is parsed
+   out of the returned HTML's Google Fonts `<link>`.
+
+Because of step 3 the auto-build succeeds on the first settings-page open even
+on a fully cached site. If it ever still comes up empty (e.g. the cached HTML
+predates the toggle), the fallback is manual: visit any front-end page once
+(with the toggle enabled) and click **Fetch / refresh fonts**.
+
 ## Installation
 
 1. Upload the plugin to `wp-content/plugins/` (or install the ZIP from the
