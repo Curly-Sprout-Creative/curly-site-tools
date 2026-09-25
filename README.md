@@ -22,6 +22,8 @@ updates can be distributed via GitHub Releases (see "Updates" below).
 | Open offsite links in a new tab | 23 | Front-end JS: opens links to other domains in a new tab with `rel="noopener noreferrer"`. Overrides an explicit `target="_self"` (as Oxygen/Breakdance render it) and watches for links added after load. |
 | Limit Editor uploads | 28 | Caps non-admin uploads at a configurable size (default 1 MB, adjustable in 1 MB increments) and shows a note in the media uploader. |
 | Site Admin Oxygen Builder access | — | Grants the "Site Admin" role "Edit Content Interface Only" access in the Oxygen Builder (edit page text/links/images, rearrange/duplicate elements; templates & global settings stay locked to admins). Writes the `oxygen_settings_permissions` option directly (v1.1.2+); revisit when O6 ships its official client-control feature. |
+| Cloudflare Turnstile on forms | — | Replaces Breakdance's Google reCAPTCHA with Cloudflare Turnstile. Prints the widget inside every Breakdance/Oxygen form, verifies the token server-side on submit, and stops Breakdance loading the reCAPTCHA script. Requires a Site Key + Secret Key below. No-op when the keys are blank or on non-Oxygen sites. |
+| Host Google Fonts locally | — | Downloads the Google Fonts CSS and its woff2 files into `uploads/curly-site-tools/fonts/` and serves them from this site, so visitors never contact `fonts.googleapis.com`. Builds automatically when the settings page is opened; re-run from **Tools > Curly Site Tools → Fetch / refresh fonts**. |
 
 ### Not a toggle
 
@@ -42,8 +44,10 @@ curly-site-tools/
 │   ├── disable-comments.php        # 9
 │   ├── disable-gutenberg.php       # 5
 │   ├── disable-update-emails.php   # 6
+│   ├── local-google-fonts.php      # Self-host Google Fonts + refresh action
 │   ├── media-handling.php          # 7 + 28
-│   └── post-utilities.php          # 20 (transient-cached)
+│   ├── post-utilities.php          # 20 (transient-cached)
+│   └── turnstile.php               # Cloudflare Turnstile for Breakdance forms
 └── vendor/plugin-update-checker/   # YahnisElsts/plugin-update-checker v5.7
 ```
 
@@ -54,10 +58,26 @@ Each include registers itself into a central registry at load time via
 and gates its hooks behind `curly_site_tools_is_enabled( $id )`. Enabled state is
 a single autoloaded option (`curly_site_tools_enabled`) so it's one DB read.
 
-A toggle may pass an optional `$args['field']` to attach a companion numeric
-input (used by the upload limit). The number is stored in its own autoloaded
-option (`curly_site_tools_upload_limit_mb`, default `1`, whole MB, minimum `1`)
-and read with `curly_site_tools_get_value( $id, $default )`.
+A toggle may pass `$args['fields']` — an array of companion inputs — each with
+`type` (`number` | `text` | `password`), `label`, `option`, `placeholder`,
+`description`, `min`, `step`, `unit`, and `default`. Each field is stored in its
+own option. The legacy single `$args['field']` (numeric, used by the upload
+limit) is still supported and treated as one number field.
+
+## Configuring Turnstile + local fonts (WP-CLI)
+
+```bash
+# Cloudflare Turnstile keys (create a widget at the Cloudflare dashboard → Turnstile)
+wp option update curly_site_tools_turnstile_site_key '0x4AAAAAAA...'
+wp option update curly_site_tools_turnstile_secret_key '0x4AAAAAAA...'
+
+# Enable the toggles (merge into the existing enabled array)
+wp option patch update curly_site_tools_enabled turnstile 1
+wp option patch update curly_site_tools_enabled local_google_fonts 1
+
+# Build/refresh the local fonts without opening the admin page
+wp eval 'curly_site_tools_localize_google_fonts();'
+```
 
 ## Installation
 

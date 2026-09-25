@@ -101,9 +101,11 @@ final class Curly_Site_Tools {
 			'disable-comments.php',
 			'disable-gutenberg.php',
 			'disable-update-emails.php',
+			'local-google-fonts.php',
 			'media-handling.php',
 			'oxygen-builder-access.php',
 			'post-utilities.php',
+			'turnstile.php',
 		);
 
 		foreach ( $includes as $include ) {
@@ -129,28 +131,57 @@ final class Curly_Site_Tools {
 	 * @param string $description Longer description shown under the label.
 	 * @param bool   $default     Default enabled state.
 	 * @param array  $args        Optional. Extra settings for the toggle. Supports
-	 *                            a 'field' array describing a companion numeric
-	 *                            input (label, option, min, step, unit, default).
+	 *                            a 'fields' array of companion inputs. Each field is
+	 *                            an array with: type (number|text|password), label,
+	 *                            option, placeholder, description, min, step, unit,
+	 *                            default. The legacy single 'field' argument is
+	 *                            still accepted and treated as one number field.
 	 */
 	public function register_toggle( $id, $label, $description, $default = false, $args = array() ) {
 		if ( $this->locked || isset( $this->toggles[ $id ] ) ) {
 			return;
 		}
 
-		$field = array();
-		if ( isset( $args['field'] ) && is_array( $args['field'] ) ) {
+		$fields = array();
+		if ( isset( $args['fields'] ) && is_array( $args['fields'] ) ) {
+			$fields = $args['fields'];
+		} elseif ( isset( $args['field'] ) && is_array( $args['field'] ) ) {
+			$fields = array( $args['field'] );
+		}
+
+		$normalized = array();
+		foreach ( $fields as $field ) {
+			if ( ! is_array( $field ) ) {
+				continue;
+			}
+
 			$field = wp_parse_args(
-				$args['field'],
+				$field,
 				array(
-					'label'   => '',
-					'option'  => '',
-					'min'     => 1,
-					'step'    => 1,
-					'unit'    => '',
-					'default' => 1,
+					'type'        => 'number',
+					'label'       => '',
+					'option'      => '',
+					'placeholder' => '',
+					'description' => '',
+					'min'         => 1,
+					'step'        => 1,
+					'unit'        => '',
+					'default'     => null,
 				)
 			);
+
+			if ( '' === (string) $field['option'] ) {
+				continue;
+			}
+
 			$field['option'] = sanitize_key( $field['option'] );
+			$field['type']   = in_array( $field['type'], array( 'number', 'text', 'password' ), true ) ? $field['type'] : 'text';
+
+			if ( null === $field['default'] ) {
+				$field['default'] = ( 'number' === $field['type'] ) ? 1 : '';
+			}
+
+			$normalized[] = $field;
 		}
 
 		$this->toggles[ $id ] = array(
@@ -158,7 +189,8 @@ final class Curly_Site_Tools {
 			'label'       => $label,
 			'description' => $description,
 			'default'     => (bool) $default,
-			'field'       => $field,
+			'field'       => isset( $normalized[0] ) ? $normalized[0] : array(),
+			'fields'      => $normalized,
 		);
 	}
 
@@ -270,20 +302,24 @@ final class Curly_Site_Tools {
 			)
 		);
 
-		// Register the companion option for each numeric toggle field.
+		// Register the companion option for each toggle field.
 		foreach ( $this->toggles as $toggle ) {
-			if ( empty( $toggle['field']['option'] ) ) {
-				continue;
+			$fields = isset( $toggle['fields'] ) && is_array( $toggle['fields'] ) ? $toggle['fields'] : array();
+			foreach ( $fields as $field ) {
+				if ( empty( $field['option'] ) ) {
+					continue;
+				}
+				$is_number = ( 'number' === $field['type'] );
+				register_setting(
+					self::OPTION_GROUP,
+					$field['option'],
+					array(
+						'type'              => $is_number ? 'integer' : 'string',
+						'sanitize_callback' => $is_number ? array( $this, 'sanitize_number_field' ) : array( $this, 'sanitize_text_option' ),
+						'default'           => $field['default'],
+					)
+				);
 			}
-			register_setting(
-				self::OPTION_GROUP,
-				$toggle['field']['option'],
-				array(
-					'type'              => 'integer',
-					'sanitize_callback' => array( $this, 'sanitize_number_field' ),
-					'default'           => $toggle['field']['default'],
-				)
-			);
 		}
 	}
 
@@ -295,6 +331,16 @@ final class Curly_Site_Tools {
 	 */
 	public function sanitize_number_field( $value ) {
 		return max( 1, absint( $value ) );
+	}
+
+	/**
+	 * Sanitize a text/password toggle field (API keys, IDs, labels).
+	 *
+	 * @param mixed $value Raw input.
+	 * @return string
+	 */
+	public function sanitize_text_option( $value ) {
+		return is_string( $value ) ? trim( wp_strip_all_tags( $value ) ) : '';
 	}
 
 	/**
@@ -337,7 +383,7 @@ final class Curly_Site_Tools {
 					<?php foreach ( $this->toggles as $id => $toggle ) : ?>
 						<?php
 						$enabled = $this->is_enabled( $id );
-						$field   = isset( $toggle['field'] ) ? $toggle['field'] : array();
+						$fields  = isset( $toggle['fields'] ) && is_array( $toggle['fields'] ) ? $toggle['fields'] : array();
 						?>
 						<tr>
 							<th scope="row">
@@ -358,28 +404,44 @@ final class Curly_Site_Tools {
 										<?php echo esc_html( $toggle['description'] ); ?>
 									</span>
 								</label>
-								<?php if ( ! empty( $field['option'] ) ) : ?>
-									<p class="curly-site-tools-number">
+								<?php foreach ( $fields as $field ) : ?>
+									<p class="curly-site-tools-field">
 										<?php if ( '' !== $field['label'] ) : ?>
 											<label for="curly-site-tools-<?php echo esc_attr( $field['option'] ); ?>">
 												<?php echo esc_html( $field['label'] ); ?>
 											</label>
 										<?php endif; ?>
-										<input
-											type="number"
-											id="curly-site-tools-<?php echo esc_attr( $field['option'] ); ?>"
-											class="small-text"
-											name="<?php echo esc_attr( $field['option'] ); ?>"
-											value="<?php echo esc_attr( $this->get_value( $id ) ); ?>"
-											min="<?php echo esc_attr( $field['min'] ); ?>"
-											step="<?php echo esc_attr( $field['step'] ); ?>"
-											data-curly-site-tools-toggle="curly-site-tools-<?php echo esc_attr( $id ); ?>"
-										/>
+										<?php if ( 'number' === $field['type'] ) : ?>
+											<input
+												type="number"
+												id="curly-site-tools-<?php echo esc_attr( $field['option'] ); ?>"
+												class="small-text"
+												name="<?php echo esc_attr( $field['option'] ); ?>"
+												value="<?php echo esc_attr( get_option( $field['option'], $field['default'] ) ); ?>"
+												min="<?php echo esc_attr( $field['min'] ); ?>"
+												step="<?php echo esc_attr( $field['step'] ); ?>"
+												data-curly-site-tools-toggle="curly-site-tools-<?php echo esc_attr( $id ); ?>"
+											/>
+										<?php else : ?>
+											<input
+												type="<?php echo esc_attr( 'password' === $field['type'] ? 'password' : 'text' ); ?>"
+												id="curly-site-tools-<?php echo esc_attr( $field['option'] ); ?>"
+												class="regular-text"
+												name="<?php echo esc_attr( $field['option'] ); ?>"
+												value="<?php echo esc_attr( get_option( $field['option'], $field['default'] ) ); ?>"
+												placeholder="<?php echo esc_attr( $field['placeholder'] ); ?>"
+												autocomplete="<?php echo esc_attr( 'password' === $field['type'] ? 'new-password' : 'off' ); ?>"
+												data-curly-site-tools-toggle="curly-site-tools-<?php echo esc_attr( $id ); ?>"
+											/>
+										<?php endif; ?>
 										<?php if ( '' !== $field['unit'] ) : ?>
 											<span class="description"><?php echo esc_html( $field['unit'] ); ?></span>
 										<?php endif; ?>
+										<?php if ( '' !== $field['description'] ) : ?>
+											<span class="description"><?php echo esc_html( $field['description'] ); ?></span>
+										<?php endif; ?>
 									</p>
-								<?php endif; ?>
+								<?php endforeach; ?>
 							</td>
 						</tr>
 					<?php endforeach; ?>
@@ -387,6 +449,7 @@ final class Curly_Site_Tools {
 				</table>
 				<?php submit_button( __( 'Save Changes', 'curly-site-tools' ) ); ?>
 			</form>
+			<?php do_action( 'curly_site_tools_admin_after_form', $this ); ?>
 			<script>
 			( function () {
 				var fields = document.querySelectorAll( '[data-curly-site-tools-toggle]' );
