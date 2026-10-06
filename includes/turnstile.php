@@ -104,7 +104,7 @@ add_action(
 			'breakdance_form_before_footer',
 			function () {
 				printf(
-					'<div class="cf-turnstile" data-sitekey="%s" data-theme="light"></div>',
+					'<div class="cf-turnstile" data-sitekey="%s" data-theme="light" data-appearance="interaction-only"></div>',
 					esc_attr( curly_site_tools_turnstile_site_key() )
 				);
 			}
