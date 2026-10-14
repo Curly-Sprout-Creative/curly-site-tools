@@ -105,6 +105,7 @@ final class Curly_Site_Tools {
 			'media-handling.php',
 			'oxygen-builder-access.php',
 			'post-utilities.php',
+			'schema.php',
 			'turnstile.php',
 		);
 

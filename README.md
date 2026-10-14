@@ -24,6 +24,7 @@ updates can be distributed via GitHub Releases (see "Updates" below).
 | Site Admin Oxygen Builder access | — | Grants the "Site Admin" role "Edit Content Interface Only" access in the Oxygen Builder — edit page text/links/images only. Since O6 6.2 beta 9 the builder enforces this: adding, removing, copying, dragging/reordering elements, and templates / global blocks / global settings all require full administrator access. This toggle is the *grant* (without it `site_admin` falls back to no access); disabling it removes the entry so access is revoked. Writes the `oxygen_settings_permissions` option directly (v1.1.2+) on admin requests only; revisit when O6 ships its official client-control feature. |
 | Cloudflare Turnstile on forms | — | Replaces Breakdance's Google reCAPTCHA with Cloudflare Turnstile. Prints the widget inside every Breakdance/Oxygen form, verifies the token server-side on submit, and stops Breakdance loading the reCAPTCHA script. The widget uses `data-appearance="interaction-only"`, so it is invisible to normal visitors and only appears if Cloudflare requires a challenge (works best with a **Managed** widget mode). Requires a Site Key + Secret Key below. No-op when the keys are blank or on non-Oxygen sites. |
 | Host Google Fonts locally | — | Downloads the Google Fonts CSS and its woff2 files into `uploads/curly-site-tools/fonts/` and serves them from this site, so visitors never contact `fonts.googleapis.com`. Builds automatically when the settings page is opened; re-run from **Tools > Curly Site Tools → Fetch / refresh fonts**. |
+| Local business structured data | — | Adds a schema.org **LocalBusiness** entity (name, street/city/region/postal/country, phone, price range, lat/long, opening hours, social profiles) so a physical location can be matched to the site. Merges onto The SEO Framework's existing `Organization` node (matched by `@id`) when TSF is active, otherwise prints its own `application/ld+json` block. **Opt-in and default off** — nothing is output until the toggle is on and a name + street address are filled in. |
 
 ### Not a toggle
 
@@ -47,6 +48,7 @@ curly-site-tools/
 │   ├── local-google-fonts.php      # Self-host Google Fonts + refresh action
 │   ├── media-handling.php          # 7 + 28
 │   ├── post-utilities.php          # 20 (transient-cached)
+│   ├── schema.php                  # LocalBusiness structured data
 │   └── turnstile.php               # Cloudflare Turnstile for Breakdance forms
 └── vendor/plugin-update-checker/   # YahnisElsts/plugin-update-checker v5.7
 ```
